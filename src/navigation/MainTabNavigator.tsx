@@ -10,26 +10,27 @@ const Tab = createBottomTabNavigator();
 
 import { FavoritesScreen } from '../screens/FavoritesScreen';
 import { PlaylistsScreen } from '../screens/PlaylistsScreen';
-
-const SettingsScreen = () => (
-    <View style={styles.center}>
-        <Text>Settings</Text>
-    </View>
-);
+import { SettingsScreen } from '../screens/SettingsScreen';
+import { useThemeStore } from '../store/useThemeStore';
+import { LIGHT_COLORS, DARK_COLORS } from '../constants/theme';
 
 export const MainTabNavigator = () => {
+    const { isDarkMode } = useThemeStore();
+    const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
+
     return (
         <>
             <Tab.Navigator
                 screenOptions={({ route }) => ({
                     headerShown: false,
-                    tabBarActiveTintColor: COLORS.primary,
-                    tabBarInactiveTintColor: COLORS.textSecondary,
+                    tabBarActiveTintColor: colors.primary,
+                    tabBarInactiveTintColor: colors.textSecondary,
                     tabBarStyle: {
                         borderTopWidth: 0,
                         elevation: 0,
                         height: 60,
                         paddingBottom: 8,
+                        backgroundColor: colors.background,
                     },
                     tabBarLabelStyle: {
                         fontSize: 10,

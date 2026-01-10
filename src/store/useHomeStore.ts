@@ -6,6 +6,13 @@ interface HomeState {
     songs: Song[];
     albums: Album[];
     artists: Artist[];
+    recentlyPlayed: Artist[];
+    mostPlayed: Artist[];
+    recentlyPlayedSongs: Song[];
+    mostPlayedSongs: Song[];
+    totalSongs: number;
+    totalAlbums: number;
+    totalArtists: number;
     isLoading: boolean;
     error: string | null;
     fetchHomeSongs: () => Promise<void>;
@@ -17,13 +24,20 @@ export const useHomeStore = create<HomeState>((set) => ({
     songs: [],
     albums: [],
     artists: [],
+    recentlyPlayed: [],
+    mostPlayed: [],
+    recentlyPlayedSongs: [],
+    mostPlayedSongs: [],
+    totalSongs: 0,
+    totalAlbums: 0,
+    totalArtists: 0,
     isLoading: false,
     error: null,
     fetchHomeSongs: async () => {
         set({ isLoading: true, error: null });
         try {
             // Fetch songs from a popular artist (e.g., Arijit Singh) to ensure we have data
-            const response = await searchSongs('Arijit Singh');
+            const response = await searchSongs('Arijit Singh?sort=popularity');
 
             let songs: Song[] = [];
             if (response.data && response.data.results) {
@@ -41,7 +55,14 @@ export const useHomeStore = create<HomeState>((set) => ({
                     .map(({ value }) => value);
             };
 
-            set({ songs: shuffle(songs), isLoading: false });
+            const shuffledSongs = shuffle(songs);
+            set({
+                songs: shuffledSongs,
+                recentlyPlayedSongs: shuffledSongs.slice(0, 10), // Simulate recently played songs
+                mostPlayedSongs: shuffledSongs.slice(5, 15), // Simulate most played songs
+                totalSongs: response.data?.total || 0,
+                isLoading: false
+            });
         } catch (error) {
             set({ error: 'Failed to fetch songs', isLoading: false });
         }
@@ -50,8 +71,12 @@ export const useHomeStore = create<HomeState>((set) => ({
         set({ isLoading: true, error: null });
         try {
             const response = await searchAlbums('trending');
-            if (response.status === 'SUCCESS') {
-                set({ albums: response.data.results, isLoading: false });
+            if (response.success || response.data) {
+                set({
+                    albums: response.data.results,
+                    totalAlbums: response.data.total || 0,
+                    isLoading: false
+                });
             } else {
                 set({ error: 'Failed to fetch albums', isLoading: false });
             }
@@ -62,9 +87,14 @@ export const useHomeStore = create<HomeState>((set) => ({
     fetchHomeArtists: async () => {
         set({ isLoading: true, error: null });
         try {
-            const response = await searchArtists('top');
-            if (response.status === 'SUCCESS') {
-                set({ artists: response.data.results, isLoading: false });
+            const response = await searchArtists('artist');
+            if (response.success || response.data) {
+                const allArtists = response.data.results;
+                set({
+                    artists: allArtists,
+                    totalArtists: response.data.total || 0,
+                    isLoading: false
+                });
             } else {
                 set({ error: 'Failed to fetch artists', isLoading: false });
             }

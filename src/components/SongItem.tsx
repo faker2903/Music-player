@@ -12,7 +12,11 @@ interface SongItemProps {
 }
 
 export const SongItem: React.FC<SongItemProps> = ({ song, onPress }) => {
-    const imageUrl = song.image?.find((img) => img.quality === '150x150')?.link || song.image?.[0]?.link || 'https://www.jiosaavn.com/img/c_icon.png';
+    const imageUrl = song.image?.find((img) => img.quality === '150x150')?.link ||
+        song.image?.find((img) => img.quality === '150x150')?.url ||
+        song.image?.[0]?.link ||
+        song.image?.[0]?.url ||
+        'https://www.jiosaavn.com/img/c_icon.png';
     const { currentSong, isPlaying, pauseSong, resumeSong } = usePlayerStore();
     const [modalVisible, setModalVisible] = useState(false);
 

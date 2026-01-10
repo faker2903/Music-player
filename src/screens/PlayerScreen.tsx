@@ -40,7 +40,11 @@ export const PlayerScreen = () => {
 
     if (!currentSong) return null;
 
-    const imageUrl = currentSong.image?.find((img) => img.quality === '500x500')?.link || currentSong.image?.[0]?.link || 'https://www.jiosaavn.com/img/c_icon.png';
+    const imageUrl = currentSong.image?.find((img) => img.quality === '500x500')?.link ||
+        currentSong.image?.find((img) => img.quality === '500x500')?.url ||
+        currentSong.image?.[0]?.link ||
+        currentSong.image?.[0]?.url ||
+        'https://www.jiosaavn.com/img/c_icon.png';
 
     const formatTime = (millis: number) => {
         const totalSeconds = Math.floor(millis / 1000);

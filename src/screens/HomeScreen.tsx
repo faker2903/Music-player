@@ -19,6 +19,10 @@ import { AlbumItem } from '../components/AlbumItem';
 import { ArtistItem } from '../components/ArtistItem';
 import { SongItem } from '../components/SongItem';
 import { usePlayerStore } from '../store/usePlayerStore';
+import { SuggestedArtistItem } from '../components/SuggestedArtistItem';
+import { SuggestedSongItem } from '../components/SuggestedSongItem';
+import { useThemeStore } from '../store/useThemeStore';
+import { LIGHT_COLORS, DARK_COLORS } from '../constants/theme';
 
 const TABS = ['Suggested', 'Songs', 'Artists', 'Albums'];
 
@@ -31,13 +35,24 @@ export const HomeScreen = () => {
         error,
         fetchHomeSongs,
         fetchHomeAlbums,
-        fetchHomeArtists
+        fetchHomeArtists,
+        recentlyPlayedSongs,
+        mostPlayedSongs,
+        totalSongs,
+        totalAlbums,
+        totalArtists
     } = useHomeStore();
     const { playSongList } = usePlayerStore();
+    const { isDarkMode } = useThemeStore();
+    const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
     const navigation = useNavigation();
-    const [activeTab, setActiveTab] = useState('Songs');
+    const [activeTab, setActiveTab] = useState('Suggested');
 
     useEffect(() => {
+        if (activeTab === 'Suggested') {
+            if (songs.length === 0) fetchHomeSongs();
+            if (artists.length === 0) fetchHomeArtists();
+        }
         if (activeTab === 'Songs' && songs.length === 0) fetchHomeSongs();
         if (activeTab === 'Albums' && albums.length === 0) fetchHomeAlbums();
         if (activeTab === 'Artists' && artists.length === 0) fetchHomeArtists();
@@ -75,7 +90,7 @@ export const HomeScreen = () => {
                     renderItem={({ item }) => (
                         <AlbumItem
                             album={item}
-                            onPress={(album) => navigation.navigate('AlbumDetails' as never, { album } as never)}
+                            onPress={(album) => navigation.navigate('AlbumDetails' as never, { album } as any)}
                         />
                     )}
                     keyExtractor={(item) => item.id}
@@ -93,13 +108,86 @@ export const HomeScreen = () => {
                     renderItem={({ item }) => (
                         <ArtistItem
                             artist={item}
-                            onPress={(artist) => navigation.navigate('ArtistDetails' as never, { artist } as never)}
+                            onPress={(artist) => navigation.navigate('ArtistDetails' as never, { artist } as any)}
                         />
                     )}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={styles.listContent}
                     key={`artists-list`}
                 />
+            );
+        }
+
+        if (activeTab === 'Suggested') {
+            return (
+                <View style={styles.suggestedContainer}>
+                    {/* Recently Played */}
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Recently Played</Text>
+                        <TouchableOpacity>
+                            <Text style={styles.seeAllText}>See All</Text>
+                        </TouchableOpacity>
+                    </View>
+                    {recentlyPlayedSongs.length > 0 ? (
+                        <FlatList
+                            data={recentlyPlayedSongs}
+                            renderItem={({ item }) => (
+                                <SuggestedSongItem
+                                    song={item}
+                                    onPress={() => playSongList(recentlyPlayedSongs, recentlyPlayedSongs.indexOf(item))}
+                                />
+                            )}
+                            keyExtractor={(item) => `recent-song-${item.id}`}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.horizontalListContent}
+                        />
+                    ) : (
+                        <Text style={styles.emptyText}>No song played</Text>
+                    )}
+
+                    {/* Artists */}
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Artists</Text>
+                        <TouchableOpacity onPress={() => setActiveTab('Artists')}>
+                            <Text style={styles.seeAllText}>See All</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <FlatList
+                        data={artists}
+                        renderItem={({ item }) => (
+                            <SuggestedArtistItem
+                                artist={item}
+                                onPress={(artist) => navigation.navigate('ArtistDetails' as never, { artist } as any)}
+                            />
+                        )}
+                        keyExtractor={(item) => `suggested-${item.id}`}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.horizontalListContent}
+                    />
+
+                    {/* Most Played */}
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Most Played</Text>
+                        <TouchableOpacity>
+                            <Text style={styles.seeAllText}>See All</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <FlatList
+                        data={mostPlayedSongs}
+                        renderItem={({ item }) => (
+                            <SuggestedSongItem
+                                song={item}
+                                onPress={() => playSongList(mostPlayedSongs, mostPlayedSongs.indexOf(item))}
+                            />
+                        )}
+                        keyExtractor={(item) => `most-song-${item.id}`}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.horizontalListContent}
+                    />
+                </View>
             );
         }
 
@@ -121,9 +209,9 @@ export const HomeScreen = () => {
     };
 
     const getCountText = () => {
-        if (activeTab === 'Albums') return `${albums.length} albums`;
-        if (activeTab === 'Artists') return `${artists.length} artists`;
-        return `${songs.length} songs`;
+        if (activeTab === 'Albums') return `${totalAlbums} albums`;
+        if (activeTab === 'Artists') return `${totalArtists} artists`;
+        return `${totalSongs} songs`;
     };
 
     const getSortText = () => {
@@ -159,12 +247,10 @@ export const HomeScreen = () => {
                         <TouchableOpacity
                             style={styles.tabItem}
                             onPress={() => setActiveTab(item)}
-                            disabled={item === 'Suggested'}
                         >
                             <Text style={[
                                 styles.tabText,
                                 activeTab === item && styles.activeTabText,
-                                item === 'Suggested' && styles.disabledTabText
                             ]}>
                                 {item}
                             </Text>
@@ -174,17 +260,26 @@ export const HomeScreen = () => {
                 />
             </View>
 
-            {/* Sort Bar */}
-            <View style={styles.sortBar}>
-                <Text style={styles.songCount}>{getCountText()}</Text>
-                <TouchableOpacity style={styles.sortButton}>
-                    <Text style={styles.sortText}>{getSortText()}</Text>
-                    <Ionicons name="swap-vertical" size={16} color={COLORS.primary} />
-                </TouchableOpacity>
-            </View>
+            {/* Sort Bar - Only show for Songs, Artists, Albums */}
+            {activeTab !== 'Suggested' && (
+                <View style={styles.sortBar}>
+                    <Text style={styles.songCount}>{getCountText()}</Text>
+                </View>
+            )}
 
             {/* Content */}
-            {renderContent()}
+            {activeTab === 'Suggested' ? (
+                <View style={{ flex: 1 }}>
+                    <FlatList
+                        data={[]}
+                        renderItem={null}
+                        ListHeaderComponent={renderContent()}
+                        contentContainerStyle={{ paddingBottom: 100 }}
+                    />
+                </View>
+            ) : (
+                renderContent()
+            )}
         </SafeAreaView>
     );
 };
@@ -319,5 +414,35 @@ const styles = StyleSheet.create({
     retryText: {
         color: '#FFFFFF',
         fontWeight: '600',
+    },
+    suggestedContainer: {
+        paddingBottom: SPACING.m,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: SPACING.m,
+        marginTop: SPACING.l,
+        marginBottom: SPACING.m,
+    },
+    sectionTitle: {
+        fontSize: FONT_SIZE.l,
+        fontWeight: '700',
+        color: COLORS.text,
+    },
+    seeAllText: {
+        fontSize: FONT_SIZE.s,
+        color: COLORS.primary,
+        fontWeight: '600',
+    },
+    horizontalListContent: {
+        paddingHorizontal: SPACING.m,
+    },
+    emptyText: {
+        fontSize: FONT_SIZE.m,
+        color: COLORS.textSecondary,
+        marginLeft: SPACING.m,
+        fontStyle: 'italic',
     },
 });

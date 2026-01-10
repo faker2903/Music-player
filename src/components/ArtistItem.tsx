@@ -10,7 +10,7 @@ interface ArtistItemProps {
 }
 
 export const ArtistItem: React.FC<ArtistItemProps> = ({ artist, onPress }) => {
-    const imageUrl = artist.image?.find((img) => img.quality === '150x150')?.link || artist.image?.[0]?.link || 'https://www.jiosaavn.com/img/c_icon.png';
+    const imageUrl = artist.image?.find((img) => img.quality === '150x150')?.url || artist.image?.find((img) => img.quality === '150x150')?.link || artist.image?.[0]?.url || artist.image?.[0]?.link || 'https://www.jiosaavn.com/img/c_icon.png';
 
     return (
         <TouchableOpacity style={styles.container} onPress={() => onPress(artist)}>

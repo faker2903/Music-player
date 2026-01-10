@@ -1,5 +1,5 @@
-export const COLORS = {
-  primary: '#FF6B00', // Orange from design
+export const LIGHT_COLORS = {
+  primary: '#FF6B00',
   background: '#FFFFFF',
   text: '#000000',
   textSecondary: '#888888',
@@ -7,6 +7,19 @@ export const COLORS = {
   error: '#FF0000',
   surface: '#F5F5F5',
 };
+
+export const DARK_COLORS = {
+  primary: '#FF6B00',
+  background: '#121212',
+  text: '#FFFFFF',
+  textSecondary: '#AAAAAA',
+  border: '#333333',
+  error: '#FF5252',
+  surface: '#1E1E1E',
+};
+
+// Default export for backward compatibility, will be overridden by store usage
+export const COLORS = LIGHT_COLORS;
 
 export const SPACING = {
   xs: 4,

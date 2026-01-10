@@ -57,6 +57,8 @@ export const ArtistDetailsScreen = () => {
             let newSongs: Song[] = [];
             if (songsData.data && songsData.data.songs) {
                 newSongs = songsData.data.songs;
+            } else if (songsData.songs) {
+                newSongs = songsData.songs;
             } else if (Array.isArray(songsData.data)) {
                 newSongs = songsData.data;
             } else if (songsData.data && songsData.data.results) {
@@ -151,27 +153,37 @@ export const ArtistDetailsScreen = () => {
                 </View>
             </View>
 
-            {loading ? (
-                <View style={styles.loader}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
-                </View>
-            ) : (
-                <FlatList
-                    data={songs}
-                    renderItem={({ item, index }) => (
-                        <SongItem
-                            song={item}
-                            onPress={() => playSongList(songs, index)}
-                        />
-                    )}
-                    keyExtractor={(item, index) => `${item.id}-${index}`}
-                    ListHeaderComponent={renderHeader}
-                    contentContainerStyle={styles.listContent}
-                    onEndReached={loadMore}
-                    onEndReachedThreshold={0.5}
-                    ListFooterComponent={renderFooter}
-                />
-            )}
+            <FlatList
+                data={songs}
+                renderItem={({ item, index }) => (
+                    <SongItem
+                        song={item}
+                        onPress={() => playSongList(songs, index)}
+                    />
+                )}
+                keyExtractor={(item, index) => `${item.id}-${index}`}
+                ListHeaderComponent={
+                    <>
+                        {renderHeader()}
+                        {loading && songs.length === 0 && (
+                            <View style={styles.loaderContainer}>
+                                <ActivityIndicator size="large" color={COLORS.primary} />
+                            </View>
+                        )}
+                    </>
+                }
+                ListEmptyComponent={
+                    !loading && songs.length === 0 ? (
+                        <View style={styles.centerContainer}>
+                            <Text style={styles.emptyText}>No songs found</Text>
+                        </View>
+                    ) : null
+                }
+                contentContainerStyle={styles.listContent}
+                onEndReached={loadMore}
+                onEndReachedThreshold={0.5}
+                ListFooterComponent={renderFooter}
+            />
         </SafeAreaView>
     );
 };
@@ -306,7 +318,16 @@ const styles = StyleSheet.create({
     iconButton: {
         padding: SPACING.s,
     },
-    loader: {
-        marginTop: SPACING.xl,
+    loaderContainer: {
+        paddingVertical: SPACING.xl,
+        alignItems: 'center',
+    },
+    centerContainer: {
+        alignItems: 'center',
+        padding: SPACING.xl,
+    },
+    emptyText: {
+        fontSize: FONT_SIZE.m,
+        color: COLORS.textSecondary,
     },
 });

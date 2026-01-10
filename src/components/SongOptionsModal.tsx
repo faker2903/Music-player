@@ -5,6 +5,8 @@ import { COLORS, SPACING, FONT_SIZE } from '../constants/theme';
 import { Song } from '../types';
 import { useFavoritesStore } from '../store/useFavoritesStore';
 import { usePlaylistStore } from '../store/usePlaylistStore';
+import { useThemeStore } from '../store/useThemeStore';
+import { LIGHT_COLORS, DARK_COLORS } from '../constants/theme';
 
 interface SongOptionsModalProps {
     visible: boolean;
@@ -14,7 +16,9 @@ interface SongOptionsModalProps {
 
 export const SongOptionsModal = ({ visible, onClose, song }: SongOptionsModalProps) => {
     const { isFavorite, toggleFavorite } = useFavoritesStore();
-    const { playlists, createPlaylist, addToPlaylist } = usePlaylistStore();
+    const { playlists, createPlaylist, addToPlaylist, removeFromPlaylist } = usePlaylistStore();
+    const { isDarkMode } = useThemeStore();
+    const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
     const [showPlaylists, setShowPlaylists] = useState(false);
     const [newPlaylistName, setNewPlaylistName] = useState('');
     const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
@@ -75,8 +79,22 @@ export const SongOptionsModal = ({ visible, onClose, song }: SongOptionsModalPro
                                     </TouchableOpacity>
 
                                     <TouchableOpacity style={styles.option} onPress={() => setShowPlaylists(true)}>
-                                        <Ionicons name="list" size={24} color={COLORS.text} />
-                                        <Text style={styles.optionText}>Add to Playlist</Text>
+                                        <Ionicons name="list" size={24} color={colors.text} />
+                                        <Text style={[styles.optionText, { color: colors.text }]}>Add to Playlist</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={styles.option}
+                                        onPress={() => {
+                                            // This is a bit tricky without knowing the current playlist context.
+                                            // For now, we'll show a way to remove it if it's in any playlist.
+                                            // Or better, we can just show this option if we are in PlaylistDetailsScreen.
+                                            // But for a global modal, let's just add it as an option.
+                                            setShowPlaylists(true); // Re-using playlist selection to choose which one to remove from
+                                        }}
+                                    >
+                                        <Ionicons name="remove-circle-outline" size={24} color={colors.error} />
+                                        <Text style={[styles.optionText, { color: colors.error }]}>Remove from Playlist</Text>
                                     </TouchableOpacity>
                                 </>
                             ) : (
@@ -108,17 +126,33 @@ export const SongOptionsModal = ({ visible, onClose, song }: SongOptionsModalPro
                                     )}
 
                                     <ScrollView style={styles.playlistList}>
-                                        {playlists.map(playlist => (
-                                            <TouchableOpacity
-                                                key={playlist.id}
-                                                style={styles.playlistItem}
-                                                onPress={() => handleAddToPlaylist(playlist.id)}
-                                            >
-                                                <Ionicons name="musical-notes" size={20} color={COLORS.textSecondary} />
-                                                <Text style={styles.playlistName}>{playlist.name}</Text>
-                                                <Text style={styles.songCount}>{playlist.songs.length} songs</Text>
-                                            </TouchableOpacity>
-                                        ))}
+                                        {playlists.map(playlist => {
+                                            const isInPlaylist = playlist.songs.some(s => s.id === song.id);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={playlist.id}
+                                                    style={styles.playlistItem}
+                                                    onPress={() => {
+                                                        if (isInPlaylist) {
+                                                            removeFromPlaylist(playlist.id, song.id);
+                                                        } else {
+                                                            handleAddToPlaylist(playlist.id);
+                                                        }
+                                                        onClose();
+                                                    }}
+                                                >
+                                                    <Ionicons
+                                                        name={isInPlaylist ? "remove-circle" : "add-circle"}
+                                                        size={20}
+                                                        color={isInPlaylist ? colors.error : colors.primary}
+                                                    />
+                                                    <Text style={[styles.playlistName, { color: colors.text }]}>{playlist.name}</Text>
+                                                    <Text style={[styles.songCount, { color: colors.textSecondary }]}>
+                                                        {isInPlaylist ? 'Remove' : 'Add'}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
                                     </ScrollView>
                                 </View>
                             )}

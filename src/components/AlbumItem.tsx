@@ -13,7 +13,11 @@ const { width } = Dimensions.get('window');
 const ITEM_WIDTH = (width - SPACING.m * 3) / 2;
 
 export const AlbumItem: React.FC<AlbumItemProps> = ({ album, onPress }) => {
-    const imageUrl = album.image?.find((img) => img.quality === '500x500')?.link || album.image?.[0]?.link || 'https://www.jiosaavn.com/img/c_icon.png';
+    const imageUrl = album.image?.find((img) => img.quality === '500x500')?.link ||
+        album.image?.find((img) => img.quality === '500x500')?.url ||
+        album.image?.[0]?.link ||
+        album.image?.[0]?.url ||
+        'https://www.jiosaavn.com/img/c_icon.png';
 
     return (
         <TouchableOpacity style={styles.container} onPress={() => onPress(album)}>
