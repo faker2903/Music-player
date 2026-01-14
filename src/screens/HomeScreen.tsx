@@ -9,6 +9,7 @@ import {
     SafeAreaView,
     StatusBar,
     ActivityIndicator,
+    RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useHomeStore } from '../store/useHomeStore';
@@ -47,6 +48,7 @@ export const HomeScreen = () => {
     const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
     const navigation = useNavigation();
     const [activeTab, setActiveTab] = useState('Suggested');
+    const styles = React.useMemo(() => createStyles(colors), [colors]);
 
     useEffect(() => {
         if (activeTab === 'Suggested') {
@@ -62,7 +64,7 @@ export const HomeScreen = () => {
 
     const renderContent = () => {
         if (isLoading) {
-            return <ActivityIndicator size="large" color={COLORS.primary} style={styles.loader} />;
+            return <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />;
         }
 
         if (error) {
@@ -90,7 +92,7 @@ export const HomeScreen = () => {
                     renderItem={({ item }) => (
                         <AlbumItem
                             album={item}
-                            onPress={(album) => navigation.navigate('AlbumDetails' as never, { album } as any)}
+                            onPress={(album) => (navigation as any).navigate('AlbumDetails', { album })}
                         />
                     )}
                     keyExtractor={(item) => item.id}
@@ -108,7 +110,7 @@ export const HomeScreen = () => {
                     renderItem={({ item }) => (
                         <ArtistItem
                             artist={item}
-                            onPress={(artist) => navigation.navigate('ArtistDetails' as never, { artist } as any)}
+                            onPress={(artist) => (navigation as any).navigate('ArtistDetails', { artist })}
                         />
                     )}
                     keyExtractor={(item) => item.id}
@@ -158,7 +160,7 @@ export const HomeScreen = () => {
                         renderItem={({ item }) => (
                             <SuggestedArtistItem
                                 artist={item}
-                                onPress={(artist) => navigation.navigate('ArtistDetails' as never, { artist } as any)}
+                                onPress={(artist) => (navigation as any).navigate('ArtistDetails', { artist })}
                             />
                         )}
                         keyExtractor={(item) => `suggested-${item.id}`}
@@ -204,14 +206,23 @@ export const HomeScreen = () => {
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.listContent}
                 key={`songs-list`}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={isLoading}
+                        onRefresh={fetchHomeSongs}
+                        colors={[colors.primary]}
+                        tintColor={colors.primary}
+                    />
+                }
             />
         );
     };
 
     const getCountText = () => {
-        if (activeTab === 'Albums') return `${totalAlbums} albums`;
-        if (activeTab === 'Artists') return `${totalArtists} artists`;
-        return `${totalSongs} songs`;
+        if (activeTab === 'Songs') return 'Random Songs';
+        if (activeTab === 'Albums') return 'Albums';
+        if (activeTab === 'Artists') return 'Artists';
+        return activeTab;
     };
 
     const getSortText = () => {
@@ -221,17 +232,17 @@ export const HomeScreen = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
 
             {/* Header */}
             <View style={styles.header}>
                 <View style={styles.logoContainer}>
-                    <Ionicons name="musical-notes" size={24} color={COLORS.primary} />
-                    <Text style={styles.logoText}>Mume</Text>
+                    <Ionicons name="musical-notes" size={24} color={colors.primary} />
+                    <Text style={[styles.logoText, { color: colors.text }]}>Mume</Text>
                 </View>
                 <TouchableOpacity onPress={() => navigation.navigate('Search' as never)}>
-                    <Ionicons name="search" size={24} color={COLORS.text} />
+                    <Ionicons name="search" size={24} color={colors.text} />
                 </TouchableOpacity>
             </View>
 
@@ -264,6 +275,11 @@ export const HomeScreen = () => {
             {activeTab !== 'Suggested' && (
                 <View style={styles.sortBar}>
                     <Text style={styles.songCount}>{getCountText()}</Text>
+                    <Text style={[styles.countSubtext, { color: colors.textSecondary }]}>
+                        {activeTab === 'Songs' ? `${songs.length} songs` :
+                            activeTab === 'Albums' ? `${albums.length} albums` :
+                                `${artists.length} artists`}
+                    </Text>
                 </View>
             )}
 
@@ -284,10 +300,10 @@ export const HomeScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: typeof LIGHT_COLORS) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: colors.background,
     },
     header: {
         flexDirection: 'row',
@@ -303,7 +319,6 @@ const styles = StyleSheet.create({
     logoText: {
         fontSize: FONT_SIZE.xl,
         fontWeight: '700',
-        color: COLORS.text,
         marginLeft: SPACING.s,
     },
     tabsContainer: {
@@ -318,21 +333,21 @@ const styles = StyleSheet.create({
     },
     tabText: {
         fontSize: FONT_SIZE.m,
-        color: COLORS.textSecondary,
+        color: colors.textSecondary,
         fontWeight: '500',
         marginBottom: SPACING.xs,
     },
     activeTabText: {
-        color: COLORS.primary,
+        color: colors.primary,
         fontWeight: '700',
     },
     disabledTabText: {
-        color: COLORS.border,
+        color: colors.border,
     },
     activeTabIndicator: {
         width: 20,
         height: 3,
-        backgroundColor: COLORS.primary,
+        backgroundColor: colors.primary,
         borderRadius: 1.5,
     },
     sortBar: {
@@ -345,7 +360,11 @@ const styles = StyleSheet.create({
     songCount: {
         fontSize: FONT_SIZE.l,
         fontWeight: '700',
-        color: COLORS.text,
+        color: colors.text,
+    },
+    countSubtext: {
+        fontSize: FONT_SIZE.s,
+        fontWeight: '500',
     },
     sortButton: {
         flexDirection: 'row',
@@ -353,7 +372,7 @@ const styles = StyleSheet.create({
     },
     sortText: {
         fontSize: FONT_SIZE.s,
-        color: COLORS.primary,
+        color: colors.primary,
         fontWeight: '600',
         marginRight: SPACING.xs,
     },
@@ -371,7 +390,7 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         borderRadius: 16,
-        backgroundColor: COLORS.surface,
+        backgroundColor: colors.surface,
     },
     songInfo: {
         flex: 1,
@@ -381,12 +400,12 @@ const styles = StyleSheet.create({
     songTitle: {
         fontSize: FONT_SIZE.m,
         fontWeight: '700',
-        color: COLORS.text,
+        color: colors.text,
         marginBottom: 4,
     },
     songArtist: {
         fontSize: FONT_SIZE.s,
-        color: COLORS.textSecondary,
+        color: colors.textSecondary,
     },
     playButton: {
         padding: SPACING.s,
@@ -403,12 +422,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     errorText: {
-        color: COLORS.error,
+        color: colors.error,
         marginBottom: SPACING.m,
     },
     retryButton: {
         padding: SPACING.s,
-        backgroundColor: COLORS.primary,
+        backgroundColor: colors.primary,
         borderRadius: 8,
     },
     retryText: {
@@ -429,11 +448,11 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: FONT_SIZE.l,
         fontWeight: '700',
-        color: COLORS.text,
+        color: colors.text,
     },
     seeAllText: {
         fontSize: FONT_SIZE.s,
-        color: COLORS.primary,
+        color: colors.primary,
         fontWeight: '600',
     },
     horizontalListContent: {
@@ -441,7 +460,7 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: FONT_SIZE.m,
-        color: COLORS.textSecondary,
+        color: colors.textSecondary,
         marginLeft: SPACING.m,
         fontStyle: 'italic',
     },

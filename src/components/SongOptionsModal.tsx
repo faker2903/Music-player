@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, TextInput, ScrollView } from 'react-native';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, TextInput, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, FONT_SIZE } from '../constants/theme';
+import { SPACING, FONT_SIZE, LIGHT_COLORS, DARK_COLORS } from '../constants/theme';
 import { Song } from '../types';
 import { useFavoritesStore } from '../store/useFavoritesStore';
 import { usePlaylistStore } from '../store/usePlaylistStore';
 import { useThemeStore } from '../store/useThemeStore';
-import { LIGHT_COLORS, DARK_COLORS } from '../constants/theme';
+import { useDownloadStore } from '../store/useDownloadStore';
+import { getArtistName } from '../utils/songUtils';
 
 interface SongOptionsModalProps {
     visible: boolean;
@@ -18,7 +19,9 @@ export const SongOptionsModal = ({ visible, onClose, song }: SongOptionsModalPro
     const { isFavorite, toggleFavorite } = useFavoritesStore();
     const { playlists, createPlaylist, addToPlaylist, removeFromPlaylist } = usePlaylistStore();
     const { isDarkMode } = useThemeStore();
+    const { downloadSong, isDownloaded, removeDownload, downloadingIds } = useDownloadStore();
     const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
+    const styles = React.useMemo(() => createStyles(colors), [colors]);
     const [showPlaylists, setShowPlaylists] = useState(false);
     const [newPlaylistName, setNewPlaylistName] = useState('');
     const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
@@ -29,6 +32,15 @@ export const SongOptionsModal = ({ visible, onClose, song }: SongOptionsModalPro
 
     const handleToggleFavorite = () => {
         toggleFavorite(song);
+        onClose();
+    };
+
+    const handleDownload = async () => {
+        if (isDownloaded(song.id)) {
+            await removeDownload(song.id);
+        } else {
+            await downloadSong(song);
+        }
         onClose();
     };
 
@@ -56,12 +68,12 @@ export const SongOptionsModal = ({ visible, onClose, song }: SongOptionsModalPro
             <TouchableWithoutFeedback onPress={onClose}>
                 <View style={styles.overlay}>
                     <TouchableWithoutFeedback>
-                        <View style={styles.content}>
-                            <View style={styles.header}>
+                        <View style={[styles.content, { backgroundColor: colors.surface }]}>
+                            <View style={[styles.header, { borderBottomColor: colors.border }]}>
                                 <Image source={{ uri: song.image?.[2]?.link || song.image?.[0]?.link }} style={styles.artwork} />
                                 <View style={styles.headerText}>
-                                    <Text style={styles.title} numberOfLines={1}>{song.name}</Text>
-                                    <Text style={styles.artist} numberOfLines={1}>{song.primaryArtists}</Text>
+                                    <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{song.name}</Text>
+                                    <Text style={[styles.artist, { color: colors.textSecondary }]} numberOfLines={1}>{getArtistName(song)}</Text>
                                 </View>
                             </View>
 
@@ -71,9 +83,9 @@ export const SongOptionsModal = ({ visible, onClose, song }: SongOptionsModalPro
                                         <Ionicons
                                             name={isFav ? "heart" : "heart-outline"}
                                             size={24}
-                                            color={isFav ? COLORS.primary : COLORS.text}
+                                            color={isFav ? colors.primary : colors.text}
                                         />
-                                        <Text style={[styles.optionText, isFav && styles.activeText]}>
+                                        <Text style={[styles.optionText, { color: isFav ? colors.primary : colors.text }]}>
                                             {isFav ? 'Remove from Favorites' : 'Add to Favorites'}
                                         </Text>
                                     </TouchableOpacity>
@@ -85,42 +97,43 @@ export const SongOptionsModal = ({ visible, onClose, song }: SongOptionsModalPro
 
                                     <TouchableOpacity
                                         style={styles.option}
-                                        onPress={() => {
-                                            // This is a bit tricky without knowing the current playlist context.
-                                            // For now, we'll show a way to remove it if it's in any playlist.
-                                            // Or better, we can just show this option if we are in PlaylistDetailsScreen.
-                                            // But for a global modal, let's just add it as an option.
-                                            setShowPlaylists(true); // Re-using playlist selection to choose which one to remove from
-                                        }}
+                                        onPress={handleDownload}
+                                        disabled={downloadingIds.has(song.id)}
                                     >
-                                        <Ionicons name="remove-circle-outline" size={24} color={colors.error} />
-                                        <Text style={[styles.optionText, { color: colors.error }]}>Remove from Playlist</Text>
+                                        <Ionicons
+                                            name={downloadingIds.has(song.id) ? "sync" : isDownloaded(song.id) ? "cloud-done" : "cloud-download-outline"}
+                                            size={24}
+                                            color={isDownloaded(song.id) ? colors.primary : colors.text}
+                                        />
+                                        <Text style={[styles.optionText, { color: isDownloaded(song.id) ? colors.primary : colors.text }]}>
+                                            {downloadingIds.has(song.id) ? 'Downloading...' : isDownloaded(song.id) ? 'Downloaded' : 'Download Offline'}
+                                        </Text>
                                     </TouchableOpacity>
                                 </>
                             ) : (
                                 <View style={styles.playlistContainer}>
                                     <View style={styles.playlistHeader}>
                                         <TouchableOpacity onPress={() => setShowPlaylists(false)}>
-                                            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+                                            <Ionicons name="arrow-back" size={24} color={colors.text} />
                                         </TouchableOpacity>
-                                        <Text style={styles.playlistTitle}>Select Playlist</Text>
+                                        <Text style={[styles.playlistTitle, { color: colors.text }]}>Select Playlist</Text>
                                         <TouchableOpacity onPress={() => setShowCreatePlaylist(true)}>
-                                            <Ionicons name="add" size={24} color={COLORS.primary} />
+                                            <Ionicons name="add" size={24} color={colors.primary} />
                                         </TouchableOpacity>
                                     </View>
 
                                     {showCreatePlaylist && (
-                                        <View style={styles.createContainer}>
+                                        <View style={[styles.createContainer, { backgroundColor: colors.background }]}>
                                             <TextInput
-                                                style={styles.input}
+                                                style={[styles.input, { color: colors.text }]}
                                                 placeholder="Playlist Name"
-                                                placeholderTextColor={COLORS.textSecondary}
+                                                placeholderTextColor={colors.textSecondary}
                                                 value={newPlaylistName}
                                                 onChangeText={setNewPlaylistName}
                                                 autoFocus
                                             />
                                             <TouchableOpacity onPress={handleCreatePlaylist}>
-                                                <Text style={styles.createText}>Create</Text>
+                                                <Text style={[styles.createText, { color: colors.primary }]}>Create</Text>
                                             </TouchableOpacity>
                                         </View>
                                     )}
@@ -139,16 +152,17 @@ export const SongOptionsModal = ({ visible, onClose, song }: SongOptionsModalPro
                                                             handleAddToPlaylist(playlist.id);
                                                         }
                                                         onClose();
+                                                        setShowPlaylists(false);
                                                     }}
                                                 >
                                                     <Ionicons
-                                                        name={isInPlaylist ? "remove-circle" : "add-circle"}
+                                                        name={isInPlaylist ? "checkmark-circle" : "add-circle-outline"}
                                                         size={20}
-                                                        color={isInPlaylist ? colors.error : colors.primary}
+                                                        color={isInPlaylist ? colors.primary : colors.text}
                                                     />
                                                     <Text style={[styles.playlistName, { color: colors.text }]}>{playlist.name}</Text>
                                                     <Text style={[styles.songCount, { color: colors.textSecondary }]}>
-                                                        {isInPlaylist ? 'Remove' : 'Add'}
+                                                        {isInPlaylist ? 'Added' : `${playlist.songs.length} songs`}
                                                     </Text>
                                                 </TouchableOpacity>
                                             );
@@ -164,16 +178,13 @@ export const SongOptionsModal = ({ visible, onClose, song }: SongOptionsModalPro
     );
 };
 
-import { Image } from 'react-native';
-
-const styles = StyleSheet.create({
+const createStyles = (colors: typeof LIGHT_COLORS) => StyleSheet.create({
     overlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'flex-end',
     },
     content: {
-        backgroundColor: COLORS.surface,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         padding: SPACING.m,
@@ -184,14 +195,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: SPACING.l,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
         paddingBottom: SPACING.m,
     },
     artwork: {
         width: 50,
         height: 50,
         borderRadius: 8,
-        backgroundColor: COLORS.background,
     },
     headerText: {
         marginLeft: SPACING.m,
@@ -200,12 +209,10 @@ const styles = StyleSheet.create({
     title: {
         fontSize: FONT_SIZE.m,
         fontWeight: '700',
-        color: COLORS.text,
         marginBottom: 4,
     },
     artist: {
         fontSize: FONT_SIZE.s,
-        color: COLORS.textSecondary,
     },
     option: {
         flexDirection: 'row',
@@ -214,12 +221,8 @@ const styles = StyleSheet.create({
     },
     optionText: {
         fontSize: FONT_SIZE.m,
-        color: COLORS.text,
         marginLeft: SPACING.m,
         fontWeight: '500',
-    },
-    activeText: {
-        color: COLORS.primary,
     },
     playlistContainer: {
         height: 300,
@@ -233,24 +236,20 @@ const styles = StyleSheet.create({
     playlistTitle: {
         fontSize: FONT_SIZE.l,
         fontWeight: '700',
-        color: COLORS.text,
     },
     createContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: SPACING.m,
-        backgroundColor: COLORS.background,
         borderRadius: 8,
         paddingHorizontal: SPACING.s,
     },
     input: {
         flex: 1,
         paddingVertical: SPACING.s,
-        color: COLORS.text,
         fontSize: FONT_SIZE.m,
     },
     createText: {
-        color: COLORS.primary,
         fontWeight: '600',
         padding: SPACING.s,
     },
@@ -265,11 +264,9 @@ const styles = StyleSheet.create({
     playlistName: {
         flex: 1,
         fontSize: FONT_SIZE.m,
-        color: COLORS.text,
         marginLeft: SPACING.s,
     },
     songCount: {
         fontSize: FONT_SIZE.s,
-        color: COLORS.textSecondary,
     },
 });

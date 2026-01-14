@@ -1,13 +1,17 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, SafeAreaView, StatusBar } from 'react-native';
-import { useFavoritesStore } from '../store/useFavoritesStore';
+import { View, Text, FlatList, StyleSheet, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useDownloadStore } from '../store/useDownloadStore';
+import { usePlayerStore } from '../store/usePlayerStore';
 import { SongItem } from '../components/SongItem';
 import { SPACING, FONT_SIZE, LIGHT_COLORS, DARK_COLORS } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../store/useThemeStore';
 
-export const FavoritesScreen = () => {
-    const { favorites } = useFavoritesStore();
+export const DownloadsScreen = () => {
+    const { downloadedSongs } = useDownloadStore();
+    const { playSongList } = usePlayerStore();
+    const navigation = useNavigation();
     const { isDarkMode } = useThemeStore();
     const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
     const styles = React.useMemo(() => createStyles(colors), [colors]);
@@ -16,23 +20,26 @@ export const FavoritesScreen = () => {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Favorites</Text>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Downloads</Text>
             </View>
             <FlatList
-                data={favorites}
-                renderItem={({ item }) => (
+                data={downloadedSongs}
+                renderItem={({ item, index }) => (
                     <SongItem
                         song={item}
-                        onPress={() => { }}
+                        onPress={() => playSongList(downloadedSongs, index)}
                     />
                 )}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.listContent}
                 ListEmptyComponent={
                     <View style={styles.centerContainer}>
-                        <Ionicons name="heart-outline" size={64} color={colors.textSecondary} />
-                        <Text style={[styles.emptyText, { color: colors.text }]}>No favorites yet</Text>
-                        <Text style={[styles.subText, { color: colors.textSecondary }]}>Songs you like will appear here</Text>
+                        <Ionicons name="cloud-download-outline" size={64} color={colors.textSecondary} />
+                        <Text style={[styles.emptyText, { color: colors.text }]}>No downloads yet</Text>
+                        <Text style={[styles.subText, { color: colors.textSecondary }]}>Songs you download will appear here</Text>
                     </View>
                 }
             />
@@ -45,8 +52,13 @@ const createStyles = (colors: typeof LIGHT_COLORS) => StyleSheet.create({
         flex: 1,
     },
     header: {
+        flexDirection: 'row',
+        alignItems: 'center',
         padding: SPACING.m,
         borderBottomWidth: 1,
+    },
+    backButton: {
+        marginRight: SPACING.m,
     },
     headerTitle: {
         fontSize: FONT_SIZE.xl,

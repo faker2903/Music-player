@@ -12,11 +12,12 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, FONT_SIZE } from '../constants/theme';
+import { SPACING, FONT_SIZE, LIGHT_COLORS, DARK_COLORS } from '../constants/theme';
 import { Artist, Song } from '../types';
 import { getArtist, getArtistSongs } from '../api/api';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { SongItem } from '../components/SongItem';
+import { useThemeStore } from '../store/useThemeStore';
 
 export const ArtistDetailsScreen = () => {
     const route = useRoute();
@@ -29,13 +30,15 @@ export const ArtistDetailsScreen = () => {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const { playSongList } = usePlayerStore();
+    const { isDarkMode } = useThemeStore();
+    const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
+    const styles = React.useMemo(() => createStyles(colors), [colors]);
 
     const fetchArtistData = async (pageNum: number) => {
         try {
             if (pageNum === 1) setLoading(true);
             else setLoadingMore(true);
 
-            // Fetch details only on first page
             const promises: Promise<any>[] = [getArtistSongs(artist.id, pageNum)];
             if (pageNum === 1) {
                 promises.push(getArtist(artist.id));
@@ -45,23 +48,17 @@ export const ArtistDetailsScreen = () => {
             const songsData = results[0];
             const artistData = pageNum === 1 ? results[1] : null;
 
-            // Handle Artist Details
-            if (artistData) {
-                if (artistData.data) {
-                    // @ts-ignore
-                    setDetails(Array.isArray(artistData.data) ? artistData.data[0] : artistData.data);
-                }
+            if (artistData?.data) {
+                // @ts-ignore
+                setDetails(Array.isArray(artistData.data) ? artistData.data[0] : artistData.data);
             }
 
-            // Handle Songs
             let newSongs: Song[] = [];
-            if (songsData.data && songsData.data.songs) {
+            if (songsData.data?.songs) {
                 newSongs = songsData.data.songs;
-            } else if (songsData.songs) {
-                newSongs = songsData.songs;
             } else if (Array.isArray(songsData.data)) {
                 newSongs = songsData.data;
-            } else if (songsData.data && songsData.data.results) {
+            } else if (songsData.data?.results) {
                 newSongs = songsData.data.results;
             }
 
@@ -70,7 +67,6 @@ export const ArtistDetailsScreen = () => {
             } else {
                 setSongs(prev => pageNum === 1 ? newSongs : [...prev, ...newSongs]);
             }
-
         } catch (error) {
             console.error(error);
         } finally {
@@ -92,7 +88,6 @@ export const ArtistDetailsScreen = () => {
     };
 
     const currentArtist = details || artist;
-    // Handle image array or string, and check for both url and link properties
     const getArtistImage = () => {
         if (Array.isArray(currentArtist.image)) {
             const img = currentArtist.image.find((img) => img.quality === '500x500') || currentArtist.image[0];
@@ -106,24 +101,24 @@ export const ArtistDetailsScreen = () => {
     const renderHeader = () => (
         <View style={styles.headerContent}>
             <Image source={{ uri: imageUrl }} style={styles.artistImage} />
-            <Text style={styles.title} numberOfLines={2}>{currentArtist.name}</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>{currentArtist.name}</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 {currentArtist.role || 'Artist'} | {currentArtist.type || 'Music'}
             </Text>
 
             <View style={styles.buttonContainer}>
-                <TouchableOpacity style={styles.shuffleButton}>
+                <TouchableOpacity style={[styles.shuffleButton, { backgroundColor: colors.primary }]}>
                     <Ionicons name="shuffle" size={20} color="#FFFFFF" />
                     <Text style={styles.shuffleText}>Shuffle</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.playButton}>
-                    <Ionicons name="play-circle" size={20} color={COLORS.primary} />
-                    <Text style={styles.playText}>Play</Text>
+                <TouchableOpacity style={[styles.playButton, { backgroundColor: isDarkMode ? colors.surface : '#FFF0E0' }]}>
+                    <Ionicons name="play-circle" size={20} color={colors.primary} />
+                    <Text style={[styles.playText, { color: colors.primary }]}>Play</Text>
                 </TouchableOpacity>
             </View>
 
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Songs</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Songs</Text>
             </View>
         </View>
     );
@@ -132,23 +127,22 @@ export const ArtistDetailsScreen = () => {
         if (!loadingMore) return null;
         return (
             <View style={{ paddingVertical: 20 }}>
-                <ActivityIndicator size="small" color={COLORS.primary} />
+                <ActivityIndicator size="small" color={colors.primary} />
             </View>
         );
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
 
-            {/* Navbar */}
             <View style={styles.navbar}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <View style={styles.navActions}>
                     <TouchableOpacity style={styles.navIcon}>
-                        <Ionicons name="search" size={24} color={COLORS.text} />
+                        <Ionicons name="search" size={24} color={colors.text} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -167,15 +161,15 @@ export const ArtistDetailsScreen = () => {
                         {renderHeader()}
                         {loading && songs.length === 0 && (
                             <View style={styles.loaderContainer}>
-                                <ActivityIndicator size="large" color={COLORS.primary} />
+                                <ActivityIndicator size="large" color={colors.primary} />
                             </View>
                         )}
                     </>
                 }
                 ListEmptyComponent={
                     !loading && songs.length === 0 ? (
-                        <View style={styles.centerContainer}>
-                            <Text style={styles.emptyText}>No songs found</Text>
+                        <View style={styles.loaderContainer}>
+                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No songs available</Text>
                         </View>
                     ) : null
                 }
@@ -188,10 +182,9 @@ export const ArtistDetailsScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: typeof LIGHT_COLORS) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
     },
     navbar: {
         flexDirection: 'row',
@@ -216,20 +209,18 @@ const styles = StyleSheet.create({
     artistImage: {
         width: 200,
         height: 200,
-        borderRadius: 100, // Circular
+        borderRadius: 100,
         marginBottom: SPACING.m,
-        backgroundColor: COLORS.surface,
+        backgroundColor: colors.surface,
     },
     title: {
         fontSize: FONT_SIZE.xl,
         fontWeight: '700',
-        color: COLORS.text,
         textAlign: 'center',
         marginBottom: SPACING.xs,
     },
     subtitle: {
         fontSize: FONT_SIZE.s,
-        color: COLORS.textSecondary,
         textAlign: 'center',
         marginBottom: SPACING.l,
     },
@@ -242,7 +233,6 @@ const styles = StyleSheet.create({
     },
     shuffleButton: {
         flex: 1,
-        backgroundColor: COLORS.primary,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -258,7 +248,6 @@ const styles = StyleSheet.create({
     },
     playButton: {
         flex: 1,
-        backgroundColor: '#FFF0E0', // Light orange
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -266,7 +255,6 @@ const styles = StyleSheet.create({
         borderRadius: 30,
     },
     playText: {
-        color: COLORS.primary,
         fontWeight: '600',
         marginLeft: SPACING.xs,
         fontSize: FONT_SIZE.m,
@@ -282,52 +270,12 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: FONT_SIZE.l,
         fontWeight: '700',
-        color: COLORS.text,
-    },
-    seeAllText: {
-        fontSize: FONT_SIZE.s,
-        color: COLORS.primary,
-        fontWeight: '600',
-    },
-    songItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: SPACING.m,
-        paddingVertical: SPACING.s,
-    },
-    songImage: {
-        width: 50,
-        height: 50,
-        borderRadius: 12,
-        backgroundColor: COLORS.surface,
-    },
-    songInfo: {
-        flex: 1,
-        marginLeft: SPACING.m,
-    },
-    songTitle: {
-        fontSize: FONT_SIZE.m,
-        fontWeight: '600',
-        color: COLORS.text,
-        marginBottom: 2,
-    },
-    songArtist: {
-        fontSize: FONT_SIZE.s,
-        color: COLORS.textSecondary,
-    },
-    iconButton: {
-        padding: SPACING.s,
     },
     loaderContainer: {
         paddingVertical: SPACING.xl,
         alignItems: 'center',
     },
-    centerContainer: {
-        alignItems: 'center',
-        padding: SPACING.xl,
-    },
     emptyText: {
         fontSize: FONT_SIZE.m,
-        color: COLORS.textSecondary,
     },
 });

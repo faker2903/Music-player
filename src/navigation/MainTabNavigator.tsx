@@ -19,7 +19,7 @@ export const MainTabNavigator = () => {
     const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
 
     return (
-        <>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
             <Tab.Navigator
                 screenOptions={({ route }) => ({
                     headerShown: false,
@@ -32,6 +32,7 @@ export const MainTabNavigator = () => {
                         paddingBottom: 8,
                         backgroundColor: colors.background,
                     },
+                    sceneContainerStyle: { backgroundColor: colors.background },
                     tabBarLabelStyle: {
                         fontSize: 10,
                         fontWeight: '500',
@@ -51,6 +52,7 @@ export const MainTabNavigator = () => {
 
                         return <Ionicons name={iconName} size={size} color={color} />;
                     },
+                    lazy: false,
                 })}
             >
                 <Tab.Screen name="Home" component={HomeScreen} />
@@ -59,7 +61,7 @@ export const MainTabNavigator = () => {
                 <Tab.Screen name="Settings" component={SettingsScreen} />
             </Tab.Navigator>
             <MiniPlayer />
-        </>
+        </View>
     );
 };
 

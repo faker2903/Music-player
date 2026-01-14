@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Song } from '../types';
-import { COLORS, SPACING, FONT_SIZE } from '../constants/theme';
+import { SPACING, FONT_SIZE, LIGHT_COLORS, DARK_COLORS } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { SongOptionsModal } from './SongOptionsModal';
+import { useThemeStore } from '../store/useThemeStore';
+import { getArtistName } from '../utils/songUtils';
 
 interface SongItemProps {
     song: Song;
@@ -19,6 +21,8 @@ export const SongItem: React.FC<SongItemProps> = ({ song, onPress }) => {
         'https://www.jiosaavn.com/img/c_icon.png';
     const { currentSong, isPlaying, pauseSong, resumeSong } = usePlayerStore();
     const [modalVisible, setModalVisible] = useState(false);
+    const { isDarkMode } = useThemeStore();
+    const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
 
     const isCurrentSong = currentSong?.id === song.id;
 
@@ -38,22 +42,22 @@ export const SongItem: React.FC<SongItemProps> = ({ song, onPress }) => {
         <TouchableOpacity style={styles.container} onPress={handlePlayPress}>
             <Image source={{ uri: imageUrl }} style={styles.image} />
             <View style={styles.infoContainer}>
-                <Text style={styles.title} numberOfLines={1}>
+                <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
                     {song.name}
                 </Text>
-                <Text style={styles.artist} numberOfLines={1}>
-                    {song.primaryArtists}
+                <Text style={[styles.artist, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {getArtistName(song)}
                 </Text>
             </View>
             <TouchableOpacity style={styles.playButton} onPress={handlePlayPress}>
                 <Ionicons
                     name={isCurrentSong && isPlaying ? "pause-circle" : "play-circle"}
                     size={24}
-                    color={COLORS.primary}
+                    color={colors.primary}
                 />
             </TouchableOpacity>
             <TouchableOpacity style={styles.moreButton} onPress={() => setModalVisible(true)}>
-                <Ionicons name="ellipsis-vertical" size={20} color={COLORS.textSecondary} />
+                <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
 
             <SongOptionsModal
@@ -76,7 +80,6 @@ const styles = StyleSheet.create({
         width: 50,
         height: 50,
         borderRadius: 8,
-        backgroundColor: COLORS.surface,
     },
     infoContainer: {
         flex: 1,
@@ -86,12 +89,10 @@ const styles = StyleSheet.create({
     title: {
         fontSize: FONT_SIZE.m,
         fontWeight: '600',
-        color: COLORS.text,
         marginBottom: 4,
     },
     artist: {
         fontSize: FONT_SIZE.s,
-        color: COLORS.textSecondary,
     },
     playButton: {
         padding: SPACING.s,

@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Song } from '../types';
-import { COLORS, SPACING, FONT_SIZE } from '../constants/theme';
+import { SPACING, FONT_SIZE, LIGHT_COLORS, DARK_COLORS } from '../constants/theme';
+import { useThemeStore } from '../store/useThemeStore';
+import { getArtistName } from '../utils/songUtils';
 
 interface SuggestedSongItemProps {
     song: Song;
@@ -9,6 +11,8 @@ interface SuggestedSongItemProps {
 }
 
 export const SuggestedSongItem: React.FC<SuggestedSongItemProps> = ({ song, onPress }) => {
+    const { isDarkMode } = useThemeStore();
+    const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
     const imageUrl = song.image?.find((img) => img.quality === '150x150')?.link ||
         song.image?.find((img) => img.quality === '150x150')?.url ||
         song.image?.[0]?.link ||
@@ -18,11 +22,11 @@ export const SuggestedSongItem: React.FC<SuggestedSongItemProps> = ({ song, onPr
     return (
         <TouchableOpacity style={styles.container} onPress={() => onPress(song)}>
             <Image source={{ uri: imageUrl }} style={styles.image} />
-            <Text style={styles.title} numberOfLines={1}>
+            <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
                 {song.name}
             </Text>
-            <Text style={styles.artist} numberOfLines={1}>
-                {song.primaryArtists}
+            <Text style={[styles.artist, { color: colors.textSecondary }]} numberOfLines={1}>
+                {getArtistName(song)}
             </Text>
         </TouchableOpacity>
     );
@@ -37,17 +41,14 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         borderRadius: 12,
-        backgroundColor: COLORS.surface,
         marginBottom: SPACING.s,
     },
     title: {
         fontSize: FONT_SIZE.s,
         fontWeight: '600',
-        color: COLORS.text,
         marginBottom: 2,
     },
     artist: {
         fontSize: 10,
-        color: COLORS.textSecondary,
     },
 });

@@ -13,11 +13,12 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, FONT_SIZE } from '../constants/theme';
+import { COLORS, SPACING, FONT_SIZE, LIGHT_COLORS, DARK_COLORS } from '../constants/theme';
 import { Album, Song } from '../types';
 import { getAlbum } from '../api/api';
 import { SongItem } from '../components/SongItem';
 import { usePlayerStore } from '../store/usePlayerStore';
+import { useThemeStore } from '../store/useThemeStore';
 
 export const AlbumDetailsScreen = () => {
     const route = useRoute();
@@ -26,6 +27,9 @@ export const AlbumDetailsScreen = () => {
     const [details, setDetails] = useState<Album | null>(null);
     const [loading, setLoading] = useState(true);
     const { playSongList } = usePlayerStore();
+    const { isDarkMode } = useThemeStore();
+    const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
+    const styles = React.useMemo(() => createStyles(colors), [colors]);
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -51,46 +55,46 @@ export const AlbumDetailsScreen = () => {
     const renderHeader = () => (
         <View style={styles.headerContent}>
             <Image source={{ uri: imageUrl }} style={styles.albumArt} />
-            <Text style={styles.title} numberOfLines={2}>{currentAlbum.name}</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>{currentAlbum.name}</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 Album | {currentAlbum.songCount || 0} Songs | {currentAlbum.year || ''}
             </Text>
 
             <View style={styles.buttonContainer}>
-                <TouchableOpacity style={styles.shuffleButton}>
+                <TouchableOpacity style={[styles.shuffleButton, { backgroundColor: colors.primary }]}>
                     <Ionicons name="shuffle" size={20} color="#FFFFFF" />
                     <Text style={styles.shuffleText}>Shuffle</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.playButton}>
-                    <Ionicons name="play-circle" size={20} color={COLORS.primary} />
-                    <Text style={styles.playText}>Play</Text>
+                <TouchableOpacity style={[styles.playButton, { backgroundColor: isDarkMode ? colors.surface : '#FFF0E0' }]}>
+                    <Ionicons name="play-circle" size={20} color={colors.primary} />
+                    <Text style={[styles.playText, { color: colors.primary }]}>Play</Text>
                 </TouchableOpacity>
             </View>
         </View>
     );
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
 
             {/* Navbar */}
             <View style={styles.navbar}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <View style={styles.navActions}>
                     <TouchableOpacity style={styles.navIcon}>
-                        <Ionicons name="search" size={24} color={COLORS.text} />
+                        <Ionicons name="search" size={24} color={colors.text} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.navIcon}>
-                        <Ionicons name="ellipsis-horizontal-circle" size={24} color={COLORS.text} />
+                        <Ionicons name="ellipsis-horizontal-circle" size={24} color={colors.text} />
                     </TouchableOpacity>
                 </View>
             </View>
 
             {loading ? (
                 <View style={styles.loader}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             ) : (
                 <FlatList
@@ -110,10 +114,9 @@ export const AlbumDetailsScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: typeof LIGHT_COLORS) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
     },
     navbar: {
         flexDirection: 'row',
@@ -152,13 +155,11 @@ const styles = StyleSheet.create({
     title: {
         fontSize: FONT_SIZE.xl,
         fontWeight: '700',
-        color: COLORS.text,
         textAlign: 'center',
         marginBottom: SPACING.xs,
     },
     subtitle: {
         fontSize: FONT_SIZE.s,
-        color: COLORS.textSecondary,
         textAlign: 'center',
         marginBottom: SPACING.l,
     },
@@ -170,7 +171,6 @@ const styles = StyleSheet.create({
     },
     shuffleButton: {
         flex: 1,
-        backgroundColor: COLORS.primary,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -186,7 +186,6 @@ const styles = StyleSheet.create({
     },
     playButton: {
         flex: 1,
-        backgroundColor: '#FFF0E0', // Light orange
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -194,7 +193,6 @@ const styles = StyleSheet.create({
         borderRadius: 30,
     },
     playText: {
-        color: COLORS.primary,
         fontWeight: '600',
         marginLeft: SPACING.xs,
         fontSize: FONT_SIZE.m,
@@ -209,7 +207,7 @@ const styles = StyleSheet.create({
         width: 50,
         height: 50,
         borderRadius: 12,
-        backgroundColor: COLORS.surface,
+        backgroundColor: colors.surface,
     },
     songInfo: {
         flex: 1,
@@ -218,12 +216,12 @@ const styles = StyleSheet.create({
     songTitle: {
         fontSize: FONT_SIZE.m,
         fontWeight: '600',
-        color: COLORS.text,
+        color: colors.text,
         marginBottom: 2,
     },
     songArtist: {
         fontSize: FONT_SIZE.s,
-        color: COLORS.textSecondary,
+        color: colors.textSecondary,
     },
     iconButton: {
         padding: SPACING.s,

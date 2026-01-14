@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { Audio } from 'expo-av';
 import { Song } from '../types';
+import { useHomeStore } from './useHomeStore';
+import { useDownloadStore } from './useDownloadStore';
 
 interface PlayerState {
     sound: Audio.Sound | null;
@@ -12,6 +14,7 @@ interface PlayerState {
     position: number;
     isLoading: boolean;
     currentPlaybackId: string | null;
+    repeatMode: 'off' | 'one' | 'all';
 
     // Actions
     playSong: (song: Song) => Promise<void>;
@@ -24,6 +27,7 @@ interface PlayerState {
     setQueue: (songs: Song[], startIndex?: number) => void;
     addToQueue: (song: Song) => void;
     playSongList: (songs: Song[], index: number) => Promise<void>;
+    toggleRepeatMode: () => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -36,6 +40,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     position: 0,
     isLoading: false,
     currentPlaybackId: null,
+    repeatMode: 'off',
 
     playSong: async (song: Song) => {
         const playbackId = Date.now().toString();
@@ -48,6 +53,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
             currentPlaybackId: playbackId
         });
 
+        // Add to recently played
+        useHomeStore.getState().addRecentlyPlayedSong(song);
+
         const { sound } = get();
         try {
             if (sound) {
@@ -57,18 +65,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
             // Check if a new playback request has started while we were unloading
             if (get().currentPlaybackId !== playbackId) return;
 
-            // Find the best quality URL
-            const getUrl = (quality: string) => {
-                const match = song.downloadUrl?.find(u => u.quality === quality);
-                return match?.url || match?.link;
-            };
+            // Check if song is downloaded
+            const localUri = useDownloadStore.getState().getLocalUri(song.id);
+            let downloadUrl = localUri;
 
-            const downloadUrl = getUrl('320kbps') ||
-                getUrl('160kbps') ||
-                getUrl('96kbps') ||
-                getUrl('48kbps') ||
-                getUrl('12kbps') ||
-                (song.downloadUrl?.[0]?.url || song.downloadUrl?.[0]?.link);
+            if (!downloadUrl) {
+                // Find the best quality URL
+                const getUrl = (quality: string) => {
+                    const match = song.downloadUrl?.find(u => u.quality === quality);
+                    return match?.url || match?.link;
+                };
+
+                downloadUrl = getUrl('320kbps') ||
+                    getUrl('160kbps') ||
+                    getUrl('96kbps') ||
+                    getUrl('48kbps') ||
+                    getUrl('12kbps') ||
+                    (song.downloadUrl?.[0]?.url || song.downloadUrl?.[0]?.link) || null;
+            }
 
             if (!downloadUrl) {
                 console.error('No download URL found for song:', song.name);
@@ -91,7 +105,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
                         });
 
                         if (status.didJustFinish) {
-                            get().playNext();
+                            const { repeatMode } = get();
+                            if (repeatMode === 'one') {
+                                get().playSong(get().currentSong!);
+                            } else {
+                                get().playNext();
+                            }
                         }
                     }
                 }
@@ -137,11 +156,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     },
 
     playNext: async () => {
-        const { queue, currentIndex } = get();
+        const { queue, currentIndex, repeatMode } = get();
         if (currentIndex < queue.length - 1) {
             const nextIndex = currentIndex + 1;
             set({ currentIndex: nextIndex });
             await get().playSong(queue[nextIndex]);
+        } else if (repeatMode === 'all' && queue.length > 0) {
+            // Wrap around to the start
+            set({ currentIndex: 0 });
+            await get().playSong(queue[0]);
         } else {
             // End of queue
             set({ isPlaying: false });
@@ -165,7 +188,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         await get().playSong(songs[index]);
     },
 
-
     seekTo: async (position: number) => {
         const { sound } = get();
         if (sound) {
@@ -184,5 +206,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     addToQueue: (song: Song) => {
         const { queue } = get();
         set({ queue: [...queue, song] });
+    },
+
+    toggleRepeatMode: () => {
+        const { repeatMode } = get();
+        const modes: ('off' | 'one' | 'all')[] = ['off', 'all', 'one'];
+        const nextIndex = (modes.indexOf(repeatMode) + 1) % modes.length;
+        set({ repeatMode: modes[nextIndex] });
     }
 }));

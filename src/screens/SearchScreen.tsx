@@ -18,8 +18,9 @@ import { SongItem } from '../components/SongItem';
 import { AlbumItem } from '../components/AlbumItem';
 import { ArtistItem } from '../components/ArtistItem';
 import { RecentSearches } from '../components/RecentSearches';
-import { COLORS, SPACING, FONT_SIZE } from '../constants/theme';
+import { SPACING, FONT_SIZE, LIGHT_COLORS, DARK_COLORS } from '../constants/theme';
 import { Song, Album, Artist } from '../types';
+import { useThemeStore } from '../store/useThemeStore';
 
 const TABS = ['Songs', 'Artists', 'Albums'];
 
@@ -40,8 +41,10 @@ export const SearchScreen = () => {
     const [activeTab, setActiveTab] = useState('Songs');
     const navigation = useNavigation();
     const { playSong } = usePlayerStore();
+    const { isDarkMode } = useThemeStore();
+    const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
+    const styles = React.useMemo(() => createStyles(colors), [colors]);
 
-    // Debounce search
     useEffect(() => {
         const timer = setTimeout(() => {
             if (query.trim()) {
@@ -79,34 +82,32 @@ export const SearchScreen = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
 
-            {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <View style={styles.searchContainer}>
-                    <Ionicons name="search" size={20} color={COLORS.textSecondary} style={styles.searchIcon} />
+                <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
+                    <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, { color: colors.text }]}
                         placeholder={`Search ${activeTab.toLowerCase()}...`}
-                        placeholderTextColor={COLORS.textSecondary}
+                        placeholderTextColor={colors.textSecondary}
                         value={query}
                         onChangeText={setQuery}
                         autoCapitalize="none"
                         autoCorrect={false}
                     />
-                    {query.length > 0 && (
-                        <TouchableOpacity onPress={handleClear}>
-                            <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
+                    {query !== '' && (
+                        <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
+                            <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
                         </TouchableOpacity>
                     )}
                 </View>
             </View>
 
-            {/* Tabs */}
             <View style={styles.tabsContainer}>
                 <FlatList
                     data={TABS}
@@ -118,20 +119,20 @@ export const SearchScreen = () => {
                         <TouchableOpacity
                             style={[
                                 styles.tab,
-                                activeTab === item && styles.activeTab,
+                                { borderColor: colors.border },
+                                activeTab === item && [styles.activeTab, { backgroundColor: colors.primary, borderColor: colors.primary }],
                             ]}
                             onPress={() => {
                                 setActiveTab(item);
-                                // Trigger search immediately if query exists
                                 if (query.trim()) {
-                                    clearResults(); // Clear old results first
-                                    // The useEffect will trigger the search
+                                    clearResults();
                                 }
                             }}
                         >
                             <Text
                                 style={[
                                     styles.tabText,
+                                    { color: colors.textSecondary },
                                     activeTab === item && styles.activeTabText,
                                 ]}
                             >
@@ -142,14 +143,13 @@ export const SearchScreen = () => {
                 />
             </View>
 
-            {/* Content */}
             <View style={styles.content}>
                 {isLoading ? (
-                    <ActivityIndicator size="large" color={COLORS.primary} style={styles.loader} />
+                    <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
                 ) : error ? (
                     <View style={styles.centerContainer}>
-                        <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
-                        <Text style={styles.errorText}>{error}</Text>
+                        <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+                        <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
                     </View>
                 ) : query.length === 0 ? (
                     <RecentSearches
@@ -168,12 +168,12 @@ export const SearchScreen = () => {
                         keyExtractor={(item) => item.id}
                         contentContainerStyle={styles.listContent}
                         numColumns={activeTab === 'Albums' ? 2 : 1}
-                        key={activeTab} // Force re-render when tab changes
+                        key={activeTab}
                     />
                 ) : (
                     <View style={styles.centerContainer}>
-                        <Ionicons name="search-outline" size={64} color={COLORS.border} />
-                        <Text style={styles.placeholderText}>No results found for "{query}"</Text>
+                        <Ionicons name="search-outline" size={64} color={colors.border} />
+                        <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>No results found for "{query}"</Text>
                     </View>
                 )}
             </View>
@@ -181,10 +181,9 @@ export const SearchScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: typeof LIGHT_COLORS) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
     },
     header: {
         flexDirection: 'row',
@@ -199,7 +198,6 @@ const styles = StyleSheet.create({
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.surface,
         borderRadius: 8,
         paddingHorizontal: SPACING.s,
         height: 40,
@@ -210,8 +208,10 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         fontSize: FONT_SIZE.m,
-        color: COLORS.text,
         height: '100%',
+    },
+    clearButton: {
+        padding: 4,
     },
     tabsContainer: {
         paddingVertical: SPACING.s,
@@ -225,15 +225,11 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         marginRight: SPACING.s,
         borderWidth: 1,
-        borderColor: COLORS.border,
     },
     activeTab: {
-        backgroundColor: COLORS.primary,
-        borderColor: COLORS.primary,
     },
     tabText: {
         fontSize: FONT_SIZE.m,
-        color: COLORS.textSecondary,
         fontWeight: '500',
     },
     activeTabText: {
@@ -252,12 +248,10 @@ const styles = StyleSheet.create({
     },
     errorText: {
         marginTop: SPACING.m,
-        color: COLORS.error,
         fontSize: FONT_SIZE.m,
     },
     placeholderText: {
         marginTop: SPACING.m,
-        color: COLORS.textSecondary,
         fontSize: FONT_SIZE.m,
     },
     listContent: {

@@ -10,9 +10,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePlayerStore } from '../store/usePlayerStore';
-import { COLORS, SPACING, FONT_SIZE } from '../constants/theme';
+import { SPACING, FONT_SIZE, LIGHT_COLORS, DARK_COLORS } from '../constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import Slider from '@react-native-community/slider';
+import { useThemeStore } from '../store/useThemeStore';
+import { useFavoritesStore } from '../store/useFavoritesStore';
+import { getArtistName } from '../utils/songUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -26,11 +29,17 @@ export const PlayerScreen = () => {
         playPrevious,
         position,
         duration,
-        seekTo
+        seekTo,
+        repeatMode,
+        toggleRepeatMode
     } = usePlayerStore();
+    const { toggleFavorite, isFavorite } = useFavoritesStore();
     const navigation = useNavigation();
     const [sliderValue, setSliderValue] = useState(0);
     const [isSeeking, setIsSeeking] = useState(false);
+    const { isDarkMode } = useThemeStore();
+    const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
+    const styles = React.useMemo(() => createStyles(colors), [colors]);
 
     useEffect(() => {
         if (!isSeeking) {
@@ -54,14 +63,14 @@ export const PlayerScreen = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="chevron-down" size={30} color={COLORS.text} />
+                    <Ionicons name="chevron-down" size={30} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Now Playing</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Now Playing</Text>
                 <TouchableOpacity style={styles.moreButton}>
-                    <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.text} />
+                    <Ionicons name="ellipsis-horizontal" size={24} color={colors.text} />
                 </TouchableOpacity>
             </View>
 
@@ -69,8 +78,10 @@ export const PlayerScreen = () => {
                 <Image source={{ uri: imageUrl }} style={styles.artwork} />
 
                 <View style={styles.infoContainer}>
-                    <Text style={styles.title} numberOfLines={1}>{currentSong.name}</Text>
-                    <Text style={styles.artist} numberOfLines={1}>{currentSong.primaryArtists}</Text>
+                    <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{currentSong.name}</Text>
+                    <Text style={[styles.artist, { color: colors.textSecondary }]} numberOfLines={1}>
+                        {getArtistName(currentSong)}
+                    </Text>
                 </View>
 
                 <View style={styles.progressContainer}>
@@ -79,28 +90,42 @@ export const PlayerScreen = () => {
                         minimumValue={0}
                         maximumValue={duration}
                         value={sliderValue}
-                        minimumTrackTintColor={COLORS.primary}
-                        maximumTrackTintColor={COLORS.border}
-                        thumbTintColor={COLORS.primary}
+                        minimumTrackTintColor={colors.primary}
+                        maximumTrackTintColor={colors.border}
+                        thumbTintColor={colors.primary}
                         onSlidingStart={() => setIsSeeking(true)}
                         onSlidingComplete={async (value) => {
                             await seekTo(value);
                             setIsSeeking(false);
                         }}
+                        onValueChange={setSliderValue}
                     />
                     <View style={styles.timeContainer}>
-                        <Text style={styles.timeText}>{formatTime(sliderValue)}</Text>
-                        <Text style={styles.timeText}>{formatTime(duration)}</Text>
+                        <Text style={[styles.timeText, { color: colors.textSecondary }]}>{formatTime(sliderValue)}</Text>
+                        <Text style={[styles.timeText, { color: colors.textSecondary }]}>{formatTime(duration)}</Text>
                     </View>
                 </View>
 
                 <View style={styles.controls}>
+                    <TouchableOpacity onPress={toggleRepeatMode} style={styles.secondaryControl}>
+                        <Ionicons
+                            name={repeatMode === 'one' ? "repeat" : "repeat"}
+                            size={24}
+                            color={repeatMode !== 'off' ? colors.primary : colors.textSecondary}
+                        />
+                        {repeatMode === 'one' && (
+                            <View style={[styles.repeatOneBadge, { backgroundColor: colors.primary }]}>
+                                <Text style={styles.repeatOneText}>1</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+
                     <TouchableOpacity onPress={playPrevious}>
-                        <Ionicons name="play-skip-back" size={35} color={COLORS.text} />
+                        <Ionicons name="play-skip-back" size={35} color={colors.text} />
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={styles.playPauseButton}
+                        style={[styles.playPauseButton, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
                         onPress={isPlaying ? pauseSong : resumeSong}
                     >
                         <Ionicons
@@ -111,7 +136,15 @@ export const PlayerScreen = () => {
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={playNext}>
-                        <Ionicons name="play-skip-forward" size={35} color={COLORS.text} />
+                        <Ionicons name="play-skip-forward" size={35} color={colors.text} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={() => toggleFavorite(currentSong)} style={styles.secondaryControl}>
+                        <Ionicons
+                            name={isFavorite(currentSong.id) ? "heart" : "heart-outline"}
+                            size={28}
+                            color={isFavorite(currentSong.id) ? colors.primary : colors.textSecondary}
+                        />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -119,10 +152,9 @@ export const PlayerScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: typeof LIGHT_COLORS) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
     },
     header: {
         flexDirection: 'row',
@@ -137,7 +169,6 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: FONT_SIZE.l,
         fontWeight: '600',
-        color: COLORS.text,
     },
     moreButton: {
         padding: SPACING.s,
@@ -153,7 +184,6 @@ const styles = StyleSheet.create({
         height: width - SPACING.xl * 2,
         borderRadius: 20,
         marginBottom: SPACING.xl,
-        backgroundColor: COLORS.surface,
         shadowColor: "#000",
         shadowOffset: {
             width: 0,
@@ -171,13 +201,11 @@ const styles = StyleSheet.create({
     title: {
         fontSize: FONT_SIZE.xl,
         fontWeight: '700',
-        color: COLORS.text,
         marginBottom: SPACING.xs,
         textAlign: 'center',
     },
     artist: {
-        fontSize: FONT_SIZE.m,
-        color: COLORS.textSecondary,
+        fontSize: FONT_SIZE.l,
         textAlign: 'center',
     },
     progressContainer: {
@@ -195,22 +223,41 @@ const styles = StyleSheet.create({
     },
     timeText: {
         fontSize: FONT_SIZE.s,
-        color: COLORS.textSecondary,
     },
     controls: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        width: '60%',
+        width: '100%',
+        paddingHorizontal: SPACING.m,
+    },
+    secondaryControl: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    repeatOneBadge: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    repeatOneText: {
+        color: '#FFFFFF',
+        fontSize: 8,
+        fontWeight: 'bold',
     },
     playPauseButton: {
         width: 70,
         height: 70,
         borderRadius: 35,
-        backgroundColor: COLORS.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: COLORS.primary,
         shadowOffset: {
             width: 0,
             height: 4,
